@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import GameChat from "@/components/game-chat"
 import Timer from "@/components/timer"
 import { Send, Target, ArrowLeft } from "lucide-react"
+import { GameService, type Location } from "@/lib/game-service"
 
 interface ChatMessage {
   id: number
@@ -29,9 +29,44 @@ export default function GamePage() {
   const [questionsAsked, setQuestionsAsked] = useState(0)
   const [gameStartTime] = useState(new Date())
   const [isGameOver, setIsGameOver] = useState(false)
+  const [currentLocation, setCurrentLocation] = useState<Location | null>(null)
+  const [userId] = useState("demo-user") // In real app, get from auth
 
-  // Mock AI responses - in a real app, this would connect to an AI service
+  // Load a random location when game starts
+  useEffect(() => {
+    const loadLocation = async () => {
+      const location = await GameService.getRandomLocation(userId, mode)
+      setCurrentLocation(location)
+
+      if (location) {
+        // Record that user is playing this location
+        await GameService.recordLocationPlayed(userId, location.id)
+      }
+    }
+
+    if (mode) {
+      loadLocation()
+    }
+  }, [mode, userId])
+
+  // AI response based on the actual location
   const getAIResponse = (question: string): string => {
+    if (!currentLocation) return "Maybe"
+
+    // Simple keyword-based responses (in real app, use proper AI)
+    const questionLower = question.toLowerCase()
+    const locationName = currentLocation.name.toLowerCase()
+
+    // Example logic - you'd want more sophisticated AI here
+    if (questionLower.includes("europe") && currentLocation.continent === "Europe") return "Yes"
+    if (questionLower.includes("asia") && currentLocation.continent === "Asia") return "Yes"
+    if (
+      questionLower.includes("large") &&
+      ["Russia", "China", "Canada", "United States"].includes(currentLocation.name)
+    )
+      return "Yes"
+
+    // Default to random for demo
     const responses = ["Yes", "No", "Maybe"]
     return responses[Math.floor(Math.random() * responses.length)]
   }
@@ -59,11 +94,10 @@ export default function GamePage() {
     setCurrentQuestion("")
   }
 
-  const handleSubmitGuess = () => {
-    if (!currentGuess.trim() || isGameOver) return
+  const handleSubmitGuess = async () => {
+    if (!currentGuess.trim() || isGameOver || !currentLocation) return
 
-    // Mock guess validation - in a real app, this would check against the correct answer
-    const isCorrect = Math.random() > 0.7 // 30% chance of being correct for demo
+    const isCorrect = currentGuess.toLowerCase() === currentLocation.name.toLowerCase()
 
     const guessMessage: ChatMessage = {
       id: Date.now(),
@@ -75,7 +109,7 @@ export default function GamePage() {
     const resultMessage: ChatMessage = {
       id: Date.now() + 1,
       type: "answer",
-      content: isCorrect ? "Correct! 🎉" : "Incorrect, keep trying!",
+      content: isCorrect ? `Correct! It was ${currentLocation.name}! 🎉` : "Incorrect, keep trying!",
       timestamp: new Date(),
     }
 
@@ -83,6 +117,17 @@ export default function GamePage() {
 
     if (isCorrect) {
       setIsGameOver(true)
+
+      // Save the game result
+      const completionTime = Math.floor((new Date().getTime() - gameStartTime.getTime()) / 1000)
+      await GameService.saveGame({
+        user_id: userId,
+        mode,
+        location_name: currentLocation.name,
+        questions_asked: questionsAsked,
+        completion_time_seconds: completionTime,
+        won: true,
+      })
     }
 
     setCurrentGuess("")
@@ -110,7 +155,7 @@ export default function GamePage() {
         <Button
           variant="outline"
           onClick={() => router.push("/")}
-          className="flex items-center space-x-2 border-spotify-light-gray text-spotify-white hover:bg-spotify-medium-gray hover:border-spotify-green"
+          className="flex items-center space-x-2 border-spotify-light-gray text-spotify-white hover:bg-spotify-medium-gray hover:border-spotify-orange"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>Back to Menu</span>
@@ -124,6 +169,13 @@ export default function GamePage() {
           <Timer startTime={gameStartTime} isActive={!isGameOver} />
         </div>
       </div>
+
+      {/* Debug info - remove in production */}
+      {currentLocation && (
+        <div className="mb-4 p-2 bg-red-900 text-white text-sm rounded">
+          DEBUG: Secret location is {currentLocation.name}
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Chat Interface */}
@@ -166,7 +218,7 @@ export default function GamePage() {
                     onChange={(e) => setCurrentGuess(e.target.value)}
                     onKeyPress={(e) => handleKeyPress(e, "guess")}
                     disabled={isGameOver}
-                    className="flex-1 bg-spotify-dark-gray border-spotify-light-gray text-spotify-white placeholder:text-spotify-light-gray focus:border-spotify-green"
+                    className="flex-1 bg-spotify-dark-gray border-spotify-light-gray text-spotify-white placeholder:text-spotify-light-gray focus:border-spotify-orange"
                   />
                   <Button
                     onClick={handleSubmitGuess}
