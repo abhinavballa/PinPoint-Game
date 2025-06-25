@@ -10,6 +10,7 @@ import GameChat from "@/components/game-chat"
 import Timer from "@/components/timer"
 import { Send, Target, ArrowLeft } from "lucide-react"
 import { GameService, type Location } from "@/lib/game-service"
+import { getAIResponse } from "@/app/actions/ai-response"
 
 interface ChatMessage {
   id: number
@@ -31,6 +32,7 @@ export default function GamePage() {
   const [isGameOver, setIsGameOver] = useState(false)
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null)
   const [userId] = useState("demo-user") // In real app, get from auth
+  const [isProcessingQuestion, setIsProcessingQuestion] = useState(false)
 
   // Load a random location when game starts
   useEffect(() => {
@@ -49,30 +51,11 @@ export default function GamePage() {
     }
   }, [mode, userId])
 
-  // AI response based on the actual location
-  const getAIResponse = (question: string): string => {
-    if (!currentLocation) return "Maybe"
+  const handleSubmitQuestion = async () => {
+    if (!currentQuestion.trim() || questionsAsked >= 20 || isGameOver || !currentLocation || isProcessingQuestion)
+      return
 
-    // Simple keyword-based responses (in real app, use proper AI)
-    const questionLower = question.toLowerCase()
-    const locationName = currentLocation.name.toLowerCase()
-
-    // Example logic - you'd want more sophisticated AI here
-    if (questionLower.includes("europe") && currentLocation.continent === "Europe") return "Yes"
-    if (questionLower.includes("asia") && currentLocation.continent === "Asia") return "Yes"
-    if (
-      questionLower.includes("large") &&
-      ["Russia", "China", "Canada", "United States"].includes(currentLocation.name)
-    )
-      return "Yes"
-
-    // Default to random for demo
-    const responses = ["Yes", "No", "Maybe"]
-    return responses[Math.floor(Math.random() * responses.length)]
-  }
-
-  const handleSubmitQuestion = () => {
-    if (!currentQuestion.trim() || questionsAsked >= 20 || isGameOver) return
+    setIsProcessingQuestion(true)
 
     const questionMessage: ChatMessage = {
       id: Date.now(),
@@ -81,17 +64,41 @@ export default function GamePage() {
       timestamp: new Date(),
     }
 
-    const aiResponse = getAIResponse(currentQuestion)
-    const answerMessage: ChatMessage = {
-      id: Date.now() + 1,
-      type: "answer",
-      content: aiResponse,
-      timestamp: new Date(),
-    }
-
-    setMessages((prev) => [...prev, questionMessage, answerMessage])
+    // Add question immediately
+    setMessages((prev) => [...prev, questionMessage])
     setQuestionsAsked((prev) => prev + 1)
+
+    // Clear input
+    const questionToProcess = currentQuestion
     setCurrentQuestion("")
+
+    try {
+      // Get AI response
+      const aiResponse = await getAIResponse(questionToProcess, currentLocation)
+
+      const answerMessage: ChatMessage = {
+        id: Date.now() + 1,
+        type: "answer",
+        content: aiResponse,
+        timestamp: new Date(),
+      }
+
+      setMessages((prev) => [...prev, answerMessage])
+    } catch (error) {
+      console.error("Error getting AI response:", error)
+
+      // Fallback response
+      const fallbackMessage: ChatMessage = {
+        id: Date.now() + 1,
+        type: "answer",
+        content: "Maybe",
+        timestamp: new Date(),
+      }
+
+      setMessages((prev) => [...prev, fallbackMessage])
+    } finally {
+      setIsProcessingQuestion(false)
+    }
   }
 
   const handleSubmitGuess = async () => {
@@ -171,7 +178,7 @@ export default function GamePage() {
       </div>
 
       {/* Debug info - remove in production */}
-      {currentLocation && (
+      {process.env.NODE_ENV === "development" && currentLocation && (
         <div className="mb-4 p-2 bg-red-900 text-white text-sm rounded">
           DEBUG: Secret location is {currentLocation.name}
         </div>
@@ -185,6 +192,7 @@ export default function GamePage() {
               <CardTitle className="flex items-center space-x-2 text-spotify-white">
                 <Target className="h-5 w-5 text-spotify-orange" />
                 <span>Game Chat</span>
+                {isProcessingQuestion && <span className="text-sm text-spotify-light-gray">(AI is thinking...)</span>}
               </CardTitle>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col">
@@ -198,15 +206,19 @@ export default function GamePage() {
                     value={currentQuestion}
                     onChange={(e) => setCurrentQuestion(e.target.value)}
                     onKeyPress={(e) => handleKeyPress(e, "question")}
-                    disabled={questionsAsked >= 20 || isGameOver}
+                    disabled={questionsAsked >= 20 || isGameOver || isProcessingQuestion}
                     className="flex-1 bg-spotify-dark-gray border-spotify-light-gray text-spotify-white placeholder:text-spotify-light-gray focus:border-spotify-orange"
                   />
                   <Button
                     onClick={handleSubmitQuestion}
-                    disabled={!currentQuestion.trim() || questionsAsked >= 20 || isGameOver}
+                    disabled={!currentQuestion.trim() || questionsAsked >= 20 || isGameOver || isProcessingQuestion}
                     className="px-4 bg-spotify-orange hover:bg-spotify-orange-dark text-spotify-white"
                   >
-                    <Send className="h-4 w-4" />
+                    {isProcessingQuestion ? (
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
 

@@ -3,13 +3,14 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import Navigation from "@/components/navigation"
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "PinPoint - Geography Guessing Game",
   description: "Test your geography knowledge by asking yes/no questions",
-    generator: 'v0.dev'
+  generator: "v0.dev",
 }
 
 export default function RootLayout({
@@ -24,6 +25,7 @@ export default function RootLayout({
           <Navigation />
           <main className="container mx-auto px-4 py-8">{children}</main>
         </div>
+        <Toaster />
       </body>
     </html>
   )
