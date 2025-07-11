@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Target, Trophy, Play, Database } from "lucide-react"
+import { Target, Trophy, Play } from "lucide-react"
 
 export default function Navigation() {
   const pathname = usePathname()
@@ -47,19 +47,6 @@ export default function Navigation() {
             >
               <Trophy className="h-4 w-4" />
               <span className="font-medium">Leaderboard</span>
-            </Link>
-
-            {/* Debug link - remove in production */}
-            <Link
-              href="/debug"
-              className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
-                isActive("/debug")
-                  ? "bg-spotify-orange text-spotify-white"
-                  : "text-spotify-light-gray hover:text-spotify-white hover:bg-spotify-medium-gray"
-              }`}
-            >
-              <Database className="h-4 w-4" />
-              <span className="font-medium">Debug</span>
             </Link>
           </div>
         </div>

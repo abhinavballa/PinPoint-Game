@@ -31,7 +31,7 @@ export default function GamePage() {
   const [gameStartTime] = useState(new Date())
   const [isGameOver, setIsGameOver] = useState(false)
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null)
-  const [userId] = useState("demo-user") // In real app, get from auth
+  const [userId] = useState("demo-user")
   const [isProcessingQuestion, setIsProcessingQuestion] = useState(false)
 
   // Load a random location when game starts
@@ -41,7 +41,6 @@ export default function GamePage() {
       setCurrentLocation(location)
 
       if (location) {
-        // Record that user is playing this location
         await GameService.recordLocationPlayed(userId, location.id)
       }
     }
@@ -64,16 +63,13 @@ export default function GamePage() {
       timestamp: new Date(),
     }
 
-    // Add question immediately
     setMessages((prev) => [...prev, questionMessage])
     setQuestionsAsked((prev) => prev + 1)
 
-    // Clear input
     const questionToProcess = currentQuestion
     setCurrentQuestion("")
 
     try {
-      // Get AI response
       const aiResponse = await getAIResponse(questionToProcess, currentLocation)
 
       const answerMessage: ChatMessage = {
@@ -87,7 +83,6 @@ export default function GamePage() {
     } catch (error) {
       console.error("Error getting AI response:", error)
 
-      // Fallback response
       const fallbackMessage: ChatMessage = {
         id: Date.now() + 1,
         type: "answer",
@@ -125,7 +120,6 @@ export default function GamePage() {
     if (isCorrect) {
       setIsGameOver(true)
 
-      // Save the game result
       const completionTime = Math.floor((new Date().getTime() - gameStartTime.getTime()) / 1000)
       await GameService.saveGame({
         user_id: userId,

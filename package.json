@@ -9,7 +9,7 @@
     "start": "next start"
   },
   "dependencies": {
-    "@ai-sdk/openai": "latest",
+    "@ai-sdk/groq": "latest",
     "@radix-ui/react-slot": "latest",
     "@radix-ui/react-toast": "latest",
     "@supabase/supabase-js": "latest",
