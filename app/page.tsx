@@ -1,23 +1,60 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { MapPin, Globe, Target, Play } from "lucide-react"
+import UserRegistration from "@/components/user-registration"
 
 export default function HomePage() {
   const [selectedMode, setSelectedMode] = useState<"country" | "city" | null>(null)
+  const [user, setUser] = useState<{ id: string; username: string } | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
+  useEffect(() => {
+    // Check if user is already registered
+    const userId = localStorage.getItem("pinpoint_user_id")
+    const username = localStorage.getItem("pinpoint_username")
+
+    if (userId && username) {
+      setUser({ id: userId, username })
+    }
+    setIsLoading(false)
+  }, [])
+
+  const handleUserRegistered = (userId: string, username: string) => {
+    setUser({ id: userId, username })
+  }
+
   const handleStartGame = () => {
-    if (selectedMode) {
+    if (selectedMode && user) {
       router.push(`/game?mode=${selectedMode}`)
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-spotify-black">
+        <div className="animate-spin h-8 w-8 border-2 border-spotify-orange border-t-transparent rounded-full" />
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <UserRegistration onUserRegistered={handleUserRegistered} />
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
+      {/* Welcome Message */}
+      <div className="text-center mb-8">
+        <h2 className="text-2xl font-semibold text-spotify-white mb-2">
+          Welcome back, <span className="text-spotify-orange">{user.username}</span>!
+        </h2>
+      </div>
+
       {/* Hero Section */}
       <div className="text-center mb-12">
         <div className="flex items-center justify-center mb-6">

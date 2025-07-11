@@ -1,45 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Trophy, Medal, Award, Clock, HelpCircle, Globe, MapPin } from "lucide-react"
-
-interface LeaderboardEntry {
-  rank: number
-  username: string
-  mode: "country" | "city"
-  time: string
-  questions: number
-}
-
-// Mock leaderboard data for countries
-const countryLeaderboard: LeaderboardEntry[] = [
-  { rank: 1, username: "GeoMaster", mode: "country", time: "2:34", questions: 8 },
-  { rank: 2, username: "WorldTraveler", mode: "country", time: "3:45", questions: 10 },
-  { rank: 3, username: "AtlasKing", mode: "country", time: "4:23", questions: 14 },
-  { rank: 4, username: "Compass", mode: "country", time: "5:12", questions: 18 },
-  { rank: 5, username: "Explorer", mode: "country", time: "5:47", questions: 19 },
-  { rank: 6, username: "Navigator", mode: "country", time: "6:15", questions: 16 },
-  { rank: 7, username: "Wanderer", mode: "country", time: "6:32", questions: 17 },
-  { rank: 8, username: "Adventurer", mode: "country", time: "7:02", questions: 20 },
-  { rank: 9, username: "Globetrotter", mode: "country", time: "7:18", questions: 19 },
-  { rank: 10, username: "Cartographer", mode: "country", time: "7:45", questions: 18 },
-]
-
-// Mock leaderboard data for cities
-const cityLeaderboard: LeaderboardEntry[] = [
-  { rank: 1, username: "CityHunter", mode: "city", time: "3:12", questions: 12 },
-  { rank: 2, username: "MapExplorer", mode: "city", time: "4:01", questions: 15 },
-  { rank: 3, username: "UrbanExplorer", mode: "city", time: "4:56", questions: 16 },
-  { rank: 4, username: "MetroMaster", mode: "city", time: "5:34", questions: 17 },
-  { rank: 5, username: "CityScout", mode: "city", time: "6:02", questions: 20 },
-  { rank: 6, username: "StreetWise", mode: "city", time: "6:28", questions: 18 },
-  { rank: 7, username: "UrbanNavigator", mode: "city", time: "6:55", questions: 19 },
-  { rank: 8, username: "CitySlicker", mode: "city", time: "7:21", questions: 16 },
-  { rank: 9, username: "TownExplorer", mode: "city", time: "7:48", questions: 17 },
-  { rank: 10, username: "CityWalker", mode: "city", time: "8:15", questions: 20 },
-]
+import { Trophy, Medal, Award, Clock, HelpCircle, Globe, MapPin, Users } from "lucide-react"
+import { GameService, type LeaderboardEntry } from "@/lib/game-service"
 
 const getRankIcon = (rank: number) => {
   switch (rank) {
@@ -56,14 +21,43 @@ const getRankIcon = (rank: number) => {
 
 export default function LeaderboardPage() {
   const [activeTab, setActiveTab] = useState<"country" | "city">("country")
+  const [countryLeaderboard, setCountryLeaderboard] = useState<LeaderboardEntry[]>([])
+  const [cityLeaderboard, setCityLeaderboard] = useState<LeaderboardEntry[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const loadLeaderboards = async () => {
+    setLoading(true)
+    try {
+      const [countryData, cityData] = await Promise.all([
+        GameService.getDailyLeaderboard("country"),
+        GameService.getDailyLeaderboard("city"),
+      ])
+      setCountryLeaderboard(countryData)
+      setCityLeaderboard(cityData)
+    } catch (error) {
+      console.error("Error loading leaderboards:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadLeaderboards()
+  }, [])
 
   const currentLeaderboard = activeTab === "country" ? countryLeaderboard : cityLeaderboard
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, "0")}`
+  }
 
   return (
     <div className="max-w-4xl mx-auto">
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-spotify-white mb-2">Daily Leaderboard</h1>
-        <p className="text-spotify-light-gray">Top 10 fastest players today</p>
+        <p className="text-spotify-light-gray">Top players today</p>
       </div>
 
       {/* Tab Navigation */}
@@ -96,53 +90,78 @@ export default function LeaderboardPage() {
 
       <Card className="bg-spotify-medium-gray border-spotify-medium-gray">
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2 text-spotify-white">
-            <Trophy className="h-5 w-5 text-spotify-orange" />
-            <span>{activeTab === "country" ? "Country" : "City"} Champions</span>
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center space-x-2 text-spotify-white">
+              <Trophy className="h-5 w-5 text-spotify-orange" />
+              <span>{activeTab === "country" ? "Country" : "City"} Champions</span>
+            </CardTitle>
+            <Button
+              onClick={loadLeaderboards}
+              variant="outline"
+              size="sm"
+              className="border-spotify-light-gray text-spotify-white hover:bg-spotify-dark-gray bg-transparent"
+            >
+              Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-spotify-dark-gray">
-                  <th className="text-left py-3 px-2 font-semibold text-spotify-light-gray">Rank</th>
-                  <th className="text-left py-3 px-2 font-semibold text-spotify-light-gray">Player</th>
-                  <th className="text-left py-3 px-2 font-semibold text-spotify-light-gray">Time</th>
-                  <th className="text-left py-3 px-2 font-semibold text-spotify-light-gray">Questions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {currentLeaderboard.map((entry) => (
-                  <tr
-                    key={entry.rank}
-                    className={`border-b border-spotify-dark-gray hover:bg-spotify-dark-gray/50 transition-colors ${
-                      entry.rank <= 3 ? "bg-spotify-orange/5" : ""
-                    }`}
-                  >
-                    <td className="py-4 px-2">
-                      <div className="flex items-center">{getRankIcon(entry.rank)}</div>
-                    </td>
-                    <td className="py-4 px-2">
-                      <span className="font-medium text-spotify-white">{entry.username}</span>
-                    </td>
-                    <td className="py-4 px-2">
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-4 w-4 text-spotify-light-gray" />
-                        <span className="font-mono text-spotify-white">{entry.time}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-2">
-                      <div className="flex items-center space-x-1">
-                        <HelpCircle className="h-4 w-4 text-spotify-light-gray" />
-                        <span className="text-spotify-white">{entry.questions}</span>
-                      </div>
-                    </td>
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin h-8 w-8 border-2 border-spotify-orange border-t-transparent rounded-full mx-auto mb-4" />
+              <p className="text-spotify-light-gray">Loading leaderboard...</p>
+            </div>
+          ) : currentLeaderboard.length === 0 ? (
+            <div className="text-center py-12">
+              <Users className="h-16 w-16 text-spotify-light-gray mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-spotify-white mb-2">No games played yet!</h3>
+              <p className="text-spotify-light-gray">Be the first to play and claim the top spot!</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-spotify-dark-gray">
+                    <th className="text-left py-3 px-2 font-semibold text-spotify-light-gray">Rank</th>
+                    <th className="text-left py-3 px-2 font-semibold text-spotify-light-gray">Player</th>
+                    <th className="text-left py-3 px-2 font-semibold text-spotify-light-gray">Time</th>
+                    <th className="text-left py-3 px-2 font-semibold text-spotify-light-gray">Questions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {currentLeaderboard.map((entry, index) => (
+                    <tr
+                      key={`${entry.username}-${index}`}
+                      className={`border-b border-spotify-dark-gray hover:bg-spotify-dark-gray/50 transition-colors ${
+                        index < 3 ? "bg-spotify-orange/5" : ""
+                      }`}
+                    >
+                      <td className="py-4 px-2">
+                        <div className="flex items-center">{getRankIcon(index + 1)}</div>
+                      </td>
+                      <td className="py-4 px-2">
+                        <span className="font-medium text-spotify-white">{entry.username}</span>
+                      </td>
+                      <td className="py-4 px-2">
+                        <div className="flex items-center space-x-1">
+                          <Clock className="h-4 w-4 text-spotify-light-gray" />
+                          <span className="font-mono text-spotify-white">
+                            {formatTime(entry.completion_time_seconds)}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-2">
+                        <div className="flex items-center space-x-1">
+                          <HelpCircle className="h-4 w-4 text-spotify-light-gray" />
+                          <span className="text-spotify-white">{entry.questions_asked}</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 

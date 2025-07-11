@@ -79,7 +79,7 @@ export class GameService {
         .limit(10)
 
       return (
-        data?.map((game) => ({
+        data?.map((game: any) => ({
           username: game.users.username,
           mode,
           questions_asked: game.questions_asked,

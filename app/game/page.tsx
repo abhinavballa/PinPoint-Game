@@ -31,27 +31,49 @@ export default function GamePage() {
   const [gameStartTime] = useState(new Date())
   const [isGameOver, setIsGameOver] = useState(false)
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null)
-  const [userId] = useState("demo-user")
+  const [user, setUser] = useState<{ id: string; username: string } | null>(null)
   const [isProcessingQuestion, setIsProcessingQuestion] = useState(false)
+
+  // Check for user authentication
+  useEffect(() => {
+    const userId = localStorage.getItem("pinpoint_user_id")
+    const username = localStorage.getItem("pinpoint_username")
+
+    if (!userId || !username) {
+      router.push("/")
+      return
+    }
+
+    setUser({ id: userId, username })
+  }, [router])
 
   // Load a random location when game starts
   useEffect(() => {
     const loadLocation = async () => {
-      const location = await GameService.getRandomLocation(userId, mode)
+      if (!user) return
+
+      const location = await GameService.getRandomLocation(user.id, mode)
       setCurrentLocation(location)
 
       if (location) {
-        await GameService.recordLocationPlayed(userId, location.id)
+        await GameService.recordLocationPlayed(user.id, location.id)
       }
     }
 
-    if (mode) {
+    if (mode && user) {
       loadLocation()
     }
-  }, [mode, userId])
+  }, [mode, user])
 
   const handleSubmitQuestion = async () => {
-    if (!currentQuestion.trim() || questionsAsked >= 20 || isGameOver || !currentLocation || isProcessingQuestion)
+    if (
+      !currentQuestion.trim() ||
+      questionsAsked >= 20 ||
+      isGameOver ||
+      !currentLocation ||
+      isProcessingQuestion ||
+      !user
+    )
       return
 
     setIsProcessingQuestion(true)
@@ -97,7 +119,7 @@ export default function GamePage() {
   }
 
   const handleSubmitGuess = async () => {
-    if (!currentGuess.trim() || isGameOver || !currentLocation) return
+    if (!currentGuess.trim() || isGameOver || !currentLocation || !user) return
 
     const isCorrect = currentGuess.toLowerCase() === currentLocation.name.toLowerCase()
 
@@ -122,7 +144,7 @@ export default function GamePage() {
 
       const completionTime = Math.floor((new Date().getTime() - gameStartTime.getTime()) / 1000)
       await GameService.saveGame({
-        user_id: userId,
+        user_id: user.id,
         mode,
         location_name: currentLocation.name,
         questions_asked: questionsAsked,
@@ -144,8 +166,7 @@ export default function GamePage() {
     }
   }
 
-  if (!mode) {
-    router.push("/")
+  if (!mode || !user) {
     return null
   }
 
@@ -163,6 +184,10 @@ export default function GamePage() {
         </Button>
 
         <div className="flex items-center space-x-4">
+          <div className="text-center">
+            <p className="text-sm text-spotify-light-gray">Player</p>
+            <p className="font-semibold text-spotify-orange">{user.username}</p>
+          </div>
           <div className="text-center">
             <p className="text-sm text-spotify-light-gray">Mode</p>
             <p className="font-semibold capitalize text-spotify-orange">{mode}</p>
@@ -283,6 +308,9 @@ export default function GamePage() {
             <Card className="border-spotify-orange bg-spotify-orange/10">
               <CardContent className="pt-6">
                 <p className="text-spotify-orange text-center font-semibold">🎉 Congratulations! You won!</p>
+                <p className="text-spotify-light-gray text-center text-sm mt-2">
+                  Your score has been added to the leaderboard!
+                </p>
                 <Button
                   onClick={() => router.push("/")}
                   className="w-full mt-4 bg-spotify-orange hover:bg-spotify-orange-dark text-spotify-white"
