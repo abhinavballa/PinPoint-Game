@@ -14,14 +14,23 @@ export default function HomePage() {
   const router = useRouter()
 
   useEffect(() => {
-    // Check if user is already registered
-    const userId = localStorage.getItem("pinpoint_user_id")
-    const username = localStorage.getItem("pinpoint_username")
+    const initializeApp = async () => {
+      try {
+        // Check if user is already registered in localStorage
+        const userId = localStorage.getItem("pinpoint_user_id")
+        const username = localStorage.getItem("pinpoint_username")
 
-    if (userId && username) {
-      setUser({ id: userId, username })
+        if (userId && username) {
+          setUser({ id: userId, username })
+        }
+      } catch (error) {
+        console.error("App initialization error:", error)
+      } finally {
+        setIsLoading(false)
+      }
     }
-    setIsLoading(false)
+
+    initializeApp()
   }, [])
 
   const handleUserRegistered = (userId: string, username: string) => {
@@ -37,7 +46,10 @@ export default function HomePage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-spotify-black">
-        <div className="animate-spin h-8 w-8 border-2 border-spotify-orange border-t-transparent rounded-full" />
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-2 border-spotify-orange border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-spotify-light-gray">Loading PinPoint...</p>
+        </div>
       </div>
     )
   }

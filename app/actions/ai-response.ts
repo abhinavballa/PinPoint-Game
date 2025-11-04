@@ -7,7 +7,7 @@ import type { Location } from "@/lib/database"
 export async function getAIResponse(question: string, location: Location): Promise<string> {
   try {
     const { text } = await generateText({
-      model: groq("llama3-70b-8192"), // Using Groq's fast Llama model
+      model: groq("llama-3.3-70b-versatile"),
       system: `You are an AI assistant helping with a geography guessing game. You must answer ONLY with "Yes", "No", or "Maybe" to yes/no questions about a specific location.
 
 Rules:

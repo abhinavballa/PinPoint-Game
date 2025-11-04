@@ -96,14 +96,22 @@ export class GameService {
   // Create or get user
   static async createUser(username: string, email?: string): Promise<string | null> {
     try {
-      const { data, error } = await supabase
-        .from("users")
-        .upsert({ username, email }, { onConflict: "username" })
-        .select("id")
-        .single()
+      // First, check if user already exists
+      const { data: existingUser } = await supabase.from("users").select("id").eq("username", username).single()
 
-      if (error) throw error
-      return data.id
+      if (existingUser) {
+        return existingUser.id
+      }
+
+      // If user doesn't exist, create new user
+      const { data: newUser, error } = await supabase.from("users").insert({ username, email }).select("id").single()
+
+      if (error) {
+        console.error("Supabase error:", error)
+        throw error
+      }
+
+      return newUser.id
     } catch (error) {
       console.error("Error creating user:", error)
       return null
